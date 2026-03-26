@@ -3,16 +3,16 @@ import { supabase } from "./supabase";
 import { loadStripe } from "@stripe/stripe-js";
 import { Search, Plus, ChevronRight, X, Check, Clock, Building2, Home, Phone, Mail, MapPin, Filter, ArrowLeft, Send, Star, Zap, Menu, LogOut, Bell, TrendingUp, Heart, ClipboardList, ArrowRight, Shield, Globe, Lock, BarChart3, Activity, CreditCard, ExternalLink } from "lucide-react";
 
-// ─────────── Stripe Setup ────────────────────────────────────────────────────────────────────────────────
+// âââ Stripe Setup âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "pk_test_placeholder");
 const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID || "price_placeholder";
 
-// ─────────── Mock Data ───────────────────────────────────────────────────────────────────────────────────
+// âââ Mock Data âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 const COUNTRIES = ["All", "Australia", "United States"];
 
 const RESOURCES = [
-  // ─────────── AUSTRALIA ────────────────────────────────────────────────────────────────────────────────
+  // âââ AUSTRALIA ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
   { id: 1, name: "Headspace National Mental Health", country: "Australia", category: "Mental Health", type: "Youth Mental Health", address: "485 La Trobe St, Melbourne VIC 3000", phone: "1800 650 890", email: "info@headspace.org.au", website: "https://headspace.org.au", availability: "Accepting", waitTime: "1-3 weeks", insurance: ["Medicare", "Bulk Billed", "Private Health"], languages: ["English", "Arabic", "Mandarin", "Vietnamese"], hours: "Mon-Fri 9am-5pm (centres vary)", rating: 4.8, notes: "Free or low-cost mental health support for 12-25 year olds. 150+ centres nationally. Online and phone counselling available.", tags: ["youth", "mental health", "anxiety", "depression", "bulk billed", "free", "AU"] },
   { id: 2, name: "Mission Australia Housing", country: "Australia", category: "Housing", type: "Crisis & Transitional Housing", address: "580 George St, Sydney NSW 2000", phone: "1800 111 400", email: "housing@missionaustralia.com.au", website: "https://missionaustralia.com.au", availability: "Limited", waitTime: "2-7 days", insurance: ["N/A"], languages: ["English", "Arabic", "Dari", "Vietnamese"], hours: "24/7 Crisis Line", rating: 4.5, notes: "Emergency accommodation, transitional housing, and long-term supported housing across all states and territories.", tags: ["shelter", "emergency", "families", "crisis", "transitional", "AU"] },
   { id: 3, name: "Foodbank Australia", country: "Australia", category: "Food & Nutrition", type: "Food Relief", address: "70-72 Enterprise St, Welshpool WA 6106", phone: "1300 363 744", email: "info@foodbank.org.au", website: "https://foodbank.org.au", availability: "Accepting", waitTime: "Same day", insurance: ["N/A"], languages: ["English"], hours: "Mon-Fri 8am-4pm (varies by state)", rating: 4.9, notes: "Australia's largest food relief organisation. 2,500+ charity partners nationally. No documentation required.", tags: ["food", "nutrition", "no-doc", "school meals", "food relief", "AU"] },
@@ -24,7 +24,7 @@ const RESOURCES = [
   { id: 9, name: "My Aged Care", country: "Australia", category: "Senior Services", type: "Aged Care & Home Support", address: "National Service, Govt of Australia", phone: "1800 200 422", email: "via online portal", website: "https://myagedcare.gov.au", availability: "Accepting", waitTime: "1-2 weeks (assessment)", insurance: ["Medicare", "Commonwealth Funded", "Private"], languages: ["English", "Italian", "Greek", "Mandarin", "Vietnamese"], hours: "Mon-Fri 8am-8pm, Sat 10am-2pm", rating: 4.6, notes: "Government gateway to aged care services. Home care packages, respite, meals on wheels, and residential care.", tags: ["senior", "aged care", "home care", "meals", "respite", "AU"] },
   { id: 10, name: "ReachOut Australia", country: "Australia", category: "Youth Services", type: "Online Youth Support", address: "National, Online Service", phone: "N/A (Online)", email: "info@reachout.com", website: "https://reachout.com", availability: "Accepting", waitTime: "Immediate", insurance: ["N/A"], languages: ["English"], hours: "24/7 Online", rating: 4.8, notes: "Free online mental health support for young people 14-25 and their parents. Peer support forums and self-help tools.", tags: ["youth", "online", "mental health", "peer support", "free", "AU"] },
 
-  // ─────────── UNITED STATES ────────────────────────────────────────────────────────────────────────────
+  // âââ UNITED STATES ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
   { id: 11, name: "SAMHSA National Helpline", country: "United States", category: "Mental Health", type: "Crisis & Referral", address: "Nationwide, All 50 States", phone: "1-800-662-4357", email: "via online locator", website: "https://samhsa.gov", availability: "Accepting", waitTime: "Immediate", insurance: ["Medicaid", "Medicare", "Private", "Uninsured"], languages: ["English", "Spanish"], hours: "24/7 Helpline", rating: 4.8, notes: "Free, confidential, 24/7 treatment referral and information service for mental health and substance abuse. Available in English and Spanish.", tags: ["mental health", "substance abuse", "crisis", "free", "24/7", "US"] },
   { id: 12, name: "National Alliance to End Homelessness", country: "United States", category: "Housing", type: "Emergency & Supportive Housing", address: "Nationwide, All 50 States", phone: "211 (Local)", email: "via 211.org", website: "https://endhomelessness.org", availability: "Limited", waitTime: "Varies by area", insurance: ["N/A"], languages: ["English", "Spanish"], hours: "24/7 via 211", rating: 4.5, notes: "Dial 211 for local emergency shelter, transitional housing, and rapid rehousing programs. HUD-funded Continuum of Care programs in every state.", tags: ["shelter", "emergency", "HUD", "rapid rehousing", "211", "US"] },
   { id: 13, name: "Feeding America", country: "United States", category: "Food & Nutrition", type: "Food Banks & Pantries", address: "Nationwide, 200+ Food Banks", phone: "1-800-771-2303", email: "via online locator", website: "https://feedingamerica.org", availability: "Accepting", waitTime: "Same day", insurance: ["N/A"], languages: ["English", "Spanish"], hours: "Varies by location", rating: 4.9, notes: "Nationwide network of 200+ food banks serving 40M+ people. Food pantry locator on website. SNAP application assistance available.", tags: ["food", "nutrition", "SNAP", "food bank", "pantry", "US"] },
@@ -48,7 +48,7 @@ const INITIAL_REFERRALS = [
   { id: 6, personName: "Henry L.", resourceId: 9, resourceName: "My Aged Care", status: "In Progress", dateCreated: "2026-03-05", dateUpdated: "2026-03-22", priority: "Medium", notes: "ACAT assessment scheduled. Home care package level 2 application submitted. Meals on wheels referral in progress.", followUpDate: "2026-03-30" },
 ];
 
-// ─────────── Utility Components ──────────────────────────────────────────────────────────────────────────
+// âââ Utility Components âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 const Badge = ({ children, variant = "default" }) => {
   const styles = { default: "bg-slate-100 text-slate-700", success: "bg-emerald-100 text-emerald-700", warning: "bg-amber-100 text-amber-700", danger: "bg-red-100 text-red-700", info: "bg-blue-100 text-blue-700", purple: "bg-purple-100 text-purple-700" };
@@ -95,7 +95,7 @@ const Modal = ({ isOpen, onClose, title, children, wide }) => {
   );
 };
 
-// ─────────── Landing Page ───────────────────────────────────────────────────────────────────────────────
+// âââ Landing Page âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 const LandingPage = ({ onLogin, onSignup, onViewPricing }) => (
   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -192,7 +192,7 @@ const LandingPage = ({ onLogin, onSignup, onViewPricing }) => (
   </div>
 );
 
-// ─────────── Pricing Page ───────────────────────────────────────────────────────────────────────────────
+// âââ Pricing Page âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 const PricingPage = ({ onBack, onSignup }) => (
   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -241,7 +241,7 @@ const PricingPage = ({ onBack, onSignup }) => (
   </div>
 );
 
-// ─────────── Auth Screen (Real Supabase) ──────────────────────────────────────────────────────────────
+// âââ Auth Screen (Real Supabase) ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 const AuthScreen = ({ mode, onSuccess, onSwitch, onBack }) => {
   const [email, setEmail] = useState("");
@@ -281,7 +281,7 @@ const AuthScreen = ({ mode, onSuccess, onSwitch, onBack }) => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <button onClick={onBack} className="flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 mb-6"><ArrowLeft size={16} />Back to home</button>
-        <div className="="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
           <div className="flex items-center gap-2 mb-6"><div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center"><Heart size={18} className="text-white" /></div><span className="text-xl font-bold text-slate-900">ReferralHub</span></div>
           <h2 className="text-2xl font-bold text-slate-900 mb-1">{isLogin ? "Welcome back" : "Create your account"}</h2>
           <p className="text-sm text-slate-500 mb-6">{isLogin ? "Sign in to your account" : "Start your 14-day free trial, then $15/month"}</p>
@@ -300,7 +300,7 @@ const AuthScreen = ({ mode, onSuccess, onSwitch, onBack }) => {
   );
 };
 
-// ─────────── Dashboard ───────────────────────────────────────────────────────────────────────────────────
+// âââ Dashboard ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 const Dashboard = ({ referrals, onNavigate, userName }) => {
   const active = referrals.filter(r => r.status === "In Progress" || r.status === "Pending");
@@ -333,7 +333,7 @@ const Dashboard = ({ referrals, onNavigate, userName }) => {
           <div className="space-y-3">
             {referrals.slice(0, 5).map(r => (
               <div key={r.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <div><p className="text-sm font-medium text-slate-900">{r.personName} → {r.resourceName}</p><p className="text-xs text-slate-500">{r.dateCreated}</p></div>
+                <div><p className="text-sm font-medium text-slate-900">{r.personName} â {r.resourceName}</p><p className="text-xs text-slate-500">{r.dateCreated}</p></div>
                 <StatusBadge status={r.status} />
               </div>
             ))}
@@ -359,7 +359,7 @@ const Dashboard = ({ referrals, onNavigate, userName }) => {
   );
 };
 
-// ─────────── Resource Directory ──────────────────────────────────────────────────────────────────────────
+// âââ Resource Directory âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 const ResourceDirectory = ({ onCreateReferral }) => {
   const [search, setSearch] = useState("");
@@ -432,7 +432,7 @@ const ResourceDirectory = ({ onCreateReferral }) => {
   );
 };
 
-// ─────────── Referral Tracking ──────────────────────────────────────────────────────────────────────────
+// âââ Referral Tracking ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 const ReferralTracking = ({ referrals, setReferrals, createModalData, clearCreateModal }) => {
   const [filter, setFilter] = useState("All");
@@ -530,7 +530,7 @@ const ReferralTracking = ({ referrals, setReferrals, createModalData, clearCreat
   );
 };
 
-// ─────────── Main App ───────────────────────────────────────────────────────────────────────────────────
+// âââ Main App âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 export default function App() {
   const [screen, setScreen] = useState("landing");
@@ -630,4 +630,3 @@ export default function App() {
     </div>
   );
 }
-
