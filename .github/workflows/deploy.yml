@@ -1,0 +1,147 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  cooldown-check:
+    name: Cooldown Check
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+    outputs:
+      can_deploy: ${{ steps.check.outputs.can_deploy }}
+      cooldown_remaining: ${{ steps.check.outputs.cooldown_remaining }}
+    steps:
+      - name: Check deployment cooldown (3 per hour limit)
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          WORKFLOW_FILE: deploy.yml
+          DEPLOY_LIMIT: 3
+          COOLDOWN_SECONDS: 3600
+        run: |
+          now=$(date -u +%s)
+          window_start=$((now - COOLDOWN_SECONDS))
+          count=0
+          oldest_in_window=""
+
+          parse_ts() {
+            local raw="$1"
+            # Strip sub-second precision so date parses correctly on both GNU and BSD date
+            local clean="${raw%%.*}"
+            clean="${clean%Z}"
+            local ts
+            ts=$(date -u -d "${clean}" +%s 2>/dev/null || \
+                 date -u -j -f "%Y-%m-%dT%H:%M:%S" "${clean}" +%s 2>/dev/null)
+            if [ -z "$ts" ]; then
+              echo "::warning::Could not parse timestamp: ${raw}" >&2
+            fi
+            echo "$ts"
+          }
+
+          count_runs_for_status() {
+            local status="$1"
+            local page=1
+            local any_in_window
+            while true; do
+              response=$(gh api \
+                "repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/runs?status=${status}&per_page=100&page=${page}" \
+                --jq '[.workflow_runs[] | {id: (.id | tostring), created_at: .created_at}]')
+
+              [ -z "$response" ] || [ "$response" = "[]" ] && break
+
+              any_in_window=false
+              while IFS= read -r entry; do
+                run_id=$(echo "$entry" | jq -r '.id')
+                created_at=$(echo "$entry" | jq -r '.created_at')
+                [ -z "$created_at" ] && continue
+                # Skip the current workflow run to avoid counting ourselves
+                [ "$run_id" = "${{ github.run_id }}" ] && continue
+                run_ts=$(parse_ts "$created_at")
+                if [ -n "$run_ts" ] && [ "$run_ts" -ge "$window_start" ]; then
+                  count=$((count + 1))
+                  any_in_window=true
+                  if [ -z "$oldest_in_window" ] || [ "$run_ts" -lt "$oldest_in_window" ]; then
+                    oldest_in_window="$run_ts"
+                  fi
+                fi
+              done < <(echo "$response" | jq -c '.[]')
+
+              # Stop paginating once all runs on this page are outside the window
+              $any_in_window || break
+              page=$((page + 1))
+            done
+          }
+
+          # Count completed and in_progress runs (excluding current) within the last hour
+          count_runs_for_status "completed"
+          count_runs_for_status "in_progress"
+
+          echo "Deployments in the last hour (excluding current): ${count}"
+
+          if [ "$count" -ge "$DEPLOY_LIMIT" ]; then
+            cooldown_ends=$((oldest_in_window + COOLDOWN_SECONDS))
+            remaining=$((cooldown_ends - now))
+            remaining_min=$(( (remaining + 59) / 60 ))  # round up to the next whole minute
+            echo "can_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "cooldown_remaining=${remaining_min}" >> "$GITHUB_OUTPUT"
+            echo "::warning::Cooldown active – ${count} deployments in the last hour (limit: ${DEPLOY_LIMIT}). Try again in ~${remaining_min} minute(s)."
+          else
+            echo "can_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "cooldown_remaining=0" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: cooldown-check
+    if: needs.cooldown-check.outputs.can_deploy == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_STRIPE_PRICE_ID: ${{ secrets.VITE_STRIPE_PRICE_ID }}
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+
+  cooldown-blocked:
+    name: Cooldown Blocked
+    runs-on: ubuntu-latest
+    permissions: {}
+    needs: cooldown-check
+    if: needs.cooldown-check.outputs.can_deploy == 'false'
+    steps:
+      - name: Fail – cooldown period active
+        run: |
+          echo "🚫 Deployment blocked: 3 deployments have already occurred in the last hour."
+          echo "⏳ Cooldown remaining: ~${{ needs.cooldown-check.outputs.cooldown_remaining }} minute(s)."
+          echo "Please wait for the 1-hour cooldown window to expire before deploying again."
+          exit 1
